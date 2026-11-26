@@ -94,9 +94,10 @@ function pasosClaude(fuente) {
 
 // Copia autocontenida para agy: agy no da la ruta del plugin a sus MCP, así que se escriben rutas absolutas.
 export function copiarAAgy(destino) {
-  fs.rmSync(destino, { recursive: true, force: true });
+  // Se sobrescribe en el lugar: con Antigravity abierto, su puente usa la carpeta y Windows no deja borrarla (EPERM).
+  // shortcut: un archivo que una versión futura elimine quedaría en la copia; si pasa, borrar la carpeta con agy cerrado.
   fs.mkdirSync(destino, { recursive: true });
-  for (const d of ['skills', 'scripts', 'schemas']) fs.cpSync(path.join(RAIZ, d), path.join(destino, d), { recursive: true });
+  for (const d of ['skills', 'scripts', 'schemas']) fs.cpSync(path.join(RAIZ, d), path.join(destino, d), { recursive: true, force: true });
   const manifiesto = JSON.parse(fs.readFileSync(path.join(RAIZ, 'agy', 'plugin.json'), 'utf8'));
   manifiesto.version = version();
   fs.writeFileSync(path.join(destino, 'plugin.json'), JSON.stringify(manifiesto, null, 2) + '\n');

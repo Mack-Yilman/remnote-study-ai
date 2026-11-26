@@ -1,5 +1,10 @@
 # Cambios
 
+## 0.1.2 — 2026-11-26
+
+- **`rsa instalar` con Antigravity abierto:** antes borraba la copia del plugin y fallaba con EPERM, porque el puente
+  en uso retiene la carpeta. Ahora sobrescribe los archivos en su lugar.
+
 ## 0.1.1 — 2026-11-26
 
 Corrige la apertura automática de RemNote, probada con la app cerrada.
