@@ -1,6 +1,6 @@
 {
   "name": "remnote-study-ai",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "Conecta Claude Code y Antigravity con RemNote Desktop: abre RemNote solo cuando hace falta, usa su servidor MCP oficial con caché sin conexión, protege los borrados y convierte los errores de estudio de cualquier plugin en tarjetas sin duplicarlas.",
   "type": "module",
