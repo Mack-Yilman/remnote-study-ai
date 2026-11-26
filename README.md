@@ -65,6 +65,7 @@ REMNOTE_WAIT_MS=60000
 | `REMNOTE_MCP_URL` | `http://127.0.0.1:7788/mcp` | URL del servidor MCP local de RemNote Desktop. |
 | `REMNOTE_EXE_PATH` | `C:\Program Files\RemNote\RemNote.exe` | Ruta al ejecutable de RemNote Desktop. |
 | `REMNOTE_WAIT_MS` | `60000` | Tiempo máximo de espera (en ms) al abrir RemNote automáticamente. |
+| `REMNOTE_TIMEOUT_MS` | `300000` | Opcional. Tope (en ms) de cada petición a RemNote; evita que una petición colgada bloquee el puente. |
 
 ### 2. Instalar en Claude Code (desde el marketplace)
 
