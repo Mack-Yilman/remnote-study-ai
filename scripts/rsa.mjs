@@ -30,7 +30,7 @@ function leerStdin() {
 async function main() {
   switch (orden) {
     case 'abrir': {
-      const r = await asegurarListo(leerConfig());
+      const r = await asegurarListo(leerConfig(), { origen: 'rsa abrir' });
       console.log(r.ok ? 'RemNote está listo.' : r.mensaje);
       return r.ok ? 0 : 1;
     }

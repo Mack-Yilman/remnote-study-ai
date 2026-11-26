@@ -1,0 +1,742 @@
+{
+  "tools": [
+    {
+      "name": "load_skill",
+      "description": "Load the full instructions for one or more relevant RemNote skills before acting. Available skills:\nstudy_session_tutor: Guide activity selection, duration, conversation mode, learning material and practice exam setup in an active tutoring session.\nsearch: Search the user's knowledge base for information.\nflashcards: Create flashcards and study content. For requests like \"mitochondria flashcards\", \"help me study mitochondria\", or \"do I already have flashcards on X\", etc. If the user generically asks for \"help me learn\" or \"help me study\", also follow this flow.\npractice_exams_or_quizzes: Create practice exams and quizzes. For queries like \"quiz me on...\", \"help me practice...\", \"test me on...\", etc.\nexplain_remnote: Help with how to use RemNote itself, including feature how-to questions, settings, preferences, UI appearance, and account behavior.\nexplain: Load this for requests like \"explain this\", \"what does this mean\", \"why is this true\", or other questions where you'll need to directly explain something. Only call this if the other skills are not a better fit.\nstudy_guides: Open or view Study Guides for learning sources. Use this for requests like \"open the study guide\", \"view the study guide\", or \"give me a source overview\".\nset_exam_dates: Set up or change an exam scheduler date for a folder or document.\nfind_shared_content: Search published shared study decks and study guides after local context and KB search are not enough.\nfind_edited_documents: Find what changed or was edited on a specific day or date range.\ncreate_tables: Create a native RemNote table or database when the table itself is part of what the user wants: they ask to create/make/add a table, build a document of tabular data, or want tabular data to study with flashcards. Not needed when a table is only a convenient way to format a chat answer the user did not ask to be tabular — use an inline HTML table for that.\nadding_notes: Create new documents or append content when explicitly asked, while respecting the limitation that existing document text cannot be edited in place.\ncreate_columns: Lay out document content in side-by-side columns: two-column or multi-column layouts, putting sections next to each other, or a \"dashboard\"-style page. This is a document layout option, not a table.\nread_or_look_through_pdf: Read, inspect, search, and quote PDFs/files comprehensively, including full reads, specific page ranges, and targeted quote retrieval.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "names"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "search_docs",
+      "description": "Search the knowledge base and return grouped matches.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "queries": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sort_by": {
+            "type": "string",
+            "enum": [
+              "created_at",
+              "updated_at",
+              "ranking"
+            ],
+            "description": "How to order the returned document results. ranking keeps the default relevance order. created_at and updated_at sort by document timestamps, newest first."
+          }
+        },
+        "required": [
+          "queries"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tag_rems",
+      "description": "Add a tag to one or more Rems or documents.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "ids": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "description": "A raw Rem ID returned by another RemNote MCP tool."
+            }
+          },
+          "tag": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ids",
+          "tag"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "see_text_around_rem",
+      "description": "Load surrounding text for one search-result rem.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "A raw Rem ID returned by another RemNote MCP tool."
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "read_docs",
+      "description": "Read markdown or file text for one or more documents. Results include document_sources; use those source document ids to inspect linked sources even when they are not open.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "ids": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "description": "A raw Rem ID returned by another RemNote MCP tool."
+            }
+          }
+        },
+        "required": [
+          "ids"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "find_quotes",
+      "description": "Find direct quotes from one document or file. Matches on meaning, not wording, so pass whole topics rather than keyword variants.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "A raw Rem ID returned by another RemNote MCP tool."
+          },
+          "queries": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 2,
+            "description": "At most 2 topics. Unlike search_docs, spelling/plural/stem variants of the same term return identical quotes and each costs a separate pass over the whole document."
+          }
+        },
+        "required": [
+          "id",
+          "queries"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "read_docs_raw",
+      "description": "Read one or more documents in raw Rem-tree format. Results include document_sources; use those source document ids to inspect linked sources even when they are not open.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "ids": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "description": "A raw Rem ID returned by another RemNote MCP tool."
+            }
+          }
+        },
+        "required": [
+          "ids"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "read_folders_raw",
+      "description": "Read one or more folders in raw Rem-tree format.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "ids": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "description": "A raw Rem ID returned by another RemNote MCP tool."
+            }
+          }
+        },
+        "required": [
+          "ids"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "read_open_documents",
+      "description": "Read all currently open documents. Results include document_sources; use those source document ids to inspect linked sources even when they are not open.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "open_doc",
+      "description": "Open a document in the RemNote editor.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "A raw Rem ID returned by another RemNote MCP tool."
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "find_edited_docs",
+      "description": "List documents edited in a date range.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "to"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "get_daily_doc",
+      "description": "Get or create the daily document for a date.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "date": {
+            "type": "string"
+          }
+        }
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "read_daily_docs",
+      "description": "Read recent daily documents in an optional date range.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "n": {
+            "type": "integer"
+          },
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "n"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "get_user_info",
+      "description": "Get basic account info.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "set_user_name",
+      "description": "Save the user's preferred real name.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "see_context",
+      "description": "Inspect the current user context. Document contexts include document_sources; use those source document ids to inspect linked sources even when they are not open.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "create_doc",
+      "description": "Create a document from a title and RemNote-flavored markdown.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string",
+            "description": "RemNote-flavored Markdown parsed into a nested outline. Use Markdown bullets and indentation for parent-child structure. Standard headings, emphasis, links, inline code, fenced code blocks, and LaTeX are supported.\n\nTo insert a native reference to an existing Rem, use [[label]](/doc/REM_ID), where REM_ID is the exact ID returned by a RemNote tool. A standard [label](url) remains an inline link instead of a native Rem reference.\n\nFlashcard syntax:\n- Forward: Question >> Answer\n- Backward: Answer << Question\n- Bidirectional: Term <> Definition\n- Concept: Term :: Definition\n- Descriptor: Attribute ;; Value\n- Cloze: Text with {{hidden answer}} or {{c1::hidden answer::optional hint}}\n- Multi-line: Question === followed by indented answer bullets\n- Numbered multi-line: Question >>1. followed by indented answer bullets\n- Multiple-choice: Question >>A) followed by indented answer-choice bullets; put the correct answer first\n\nExamples:\n- Question===\n    - First answer line\n    - Second answer line\n- Question>>A)\n    - Correct answer\n    - Distractor\n\nUse :: only for concept cards; it does not make child bullets the answer."
+          }
+        },
+        "required": [
+          "title",
+          "text"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "append_doc",
+      "description": "Append RemNote-flavored markdown to the top or bottom of an existing document.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "A raw Rem ID returned by another RemNote MCP tool."
+          },
+          "text": {
+            "type": "string",
+            "description": "RemNote-flavored Markdown parsed into a nested outline. Use Markdown bullets and indentation for parent-child structure. Standard headings, emphasis, links, inline code, fenced code blocks, and LaTeX are supported.\n\nTo insert a native reference to an existing Rem, use [[label]](/doc/REM_ID), where REM_ID is the exact ID returned by a RemNote tool. A standard [label](url) remains an inline link instead of a native Rem reference.\n\nFlashcard syntax:\n- Forward: Question >> Answer\n- Backward: Answer << Question\n- Bidirectional: Term <> Definition\n- Concept: Term :: Definition\n- Descriptor: Attribute ;; Value\n- Cloze: Text with {{hidden answer}} or {{c1::hidden answer::optional hint}}\n- Multi-line: Question === followed by indented answer bullets\n- Numbered multi-line: Question >>1. followed by indented answer bullets\n- Multiple-choice: Question >>A) followed by indented answer-choice bullets; put the correct answer first\n\nExamples:\n- Question===\n    - First answer line\n    - Second answer line\n- Question>>A)\n    - Correct answer\n    - Distractor\n\nUse :: only for concept cards; it does not make child bullets the answer."
+          },
+          "pos": {
+            "type": "string",
+            "enum": [
+              "top",
+              "bottom"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "text"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "edit_rem",
+      "description": "Replace the content of an existing bullet or Rem with RemNote-flavored Markdown by exact Rem ID without recreating it.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "A raw Rem ID returned by another RemNote MCP tool."
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "description": "RemNote-flavored Markdown parsed into a nested outline. Use Markdown bullets and indentation for parent-child structure. Standard headings, emphasis, links, inline code, fenced code blocks, and LaTeX are supported.\n\nTo insert a native reference to an existing Rem, use [[label]](/doc/REM_ID), where REM_ID is the exact ID returned by a RemNote tool. A standard [label](url) remains an inline link instead of a native Rem reference.\n\nFlashcard syntax:\n- Forward: Question >> Answer\n- Backward: Answer << Question\n- Bidirectional: Term <> Definition\n- Concept: Term :: Definition\n- Descriptor: Attribute ;; Value\n- Cloze: Text with {{hidden answer}} or {{c1::hidden answer::optional hint}}\n- Multi-line: Question === followed by indented answer bullets\n- Numbered multi-line: Question >>1. followed by indented answer bullets\n- Multiple-choice: Question >>A) followed by indented answer-choice bullets; put the correct answer first\n\nExamples:\n- Question===\n    - First answer line\n    - Second answer line\n- Question>>A)\n    - Correct answer\n    - Distractor\n\nUse :: only for concept cards; it does not make child bullets the answer."
+          }
+        },
+        "required": [
+          "id",
+          "text"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "insert_simple_table",
+      "description": "Insert a simple table (plain text columns and rows).",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "A raw Rem ID returned by another RemNote MCP tool."
+          },
+          "title": {
+            "type": "string",
+            "description": "Title for the table. If id is omitted, a new document with this title is created to hold the table. Provide either id or title."
+          },
+          "columns": {
+            "type": "array",
+            "description": "Ordered column headers. The FIRST column is the primary column (the main label for each row).",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Column header text."
+                }
+              },
+              "required": [
+                "name"
+              ]
+            }
+          },
+          "rows": {
+            "type": "array",
+            "description": "Each row is either a plain string (used as the value for the primary/first column) or an object { name, cells }. For the object form, set name to the value for the primary column and put the other columns in cells. Every row must have a non-empty name or be a non-empty string.",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "description": "The value for the primary (first) column, i.e. the main label for the row. Required and non-empty when using the object form."
+                    },
+                    "cells": {
+                      "type": "object",
+                      "description": "Map of the OTHER (non-primary) column names to their values. Do not put the primary column here; use name instead.",
+                      "additionalProperties": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "columns",
+          "rows"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "insert_advanced_table",
+      "description": "Insert an advanced table/database (supports select columns, AI autofill, text-to-speech, and flashcards).",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "A raw Rem ID returned by another RemNote MCP tool."
+          },
+          "title": {
+            "type": "string",
+            "description": "Title for the table. If id is omitted, a new document with this title is created to hold the table. Provide either id or title."
+          },
+          "columns": {
+            "type": "array",
+            "description": "Ordered column definitions. The FIRST column is the primary column (the main label for each row) and is always a text column.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Column header text."
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "text",
+                    "single_select",
+                    "multi_select"
+                  ]
+                },
+                "options": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "shouldAIAutofill": {
+                  "type": "boolean"
+                },
+                "shouldEnableTTS": {
+                  "type": "boolean"
+                },
+                "shouldEnableCards": {
+                  "type": "boolean"
+                },
+                "cardDirection": {
+                  "type": "string",
+                  "enum": [
+                    "forward",
+                    "backward",
+                    "both"
+                  ]
+                }
+              },
+              "required": [
+                "name"
+              ]
+            }
+          },
+          "rows": {
+            "type": "array",
+            "description": "Each row is either a plain string (used as the value for the primary/first column) or an object { name, cells }. For the object form, set name to the value for the primary column and put the other columns in cells. Every row must have a non-empty name or be a non-empty string.",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "description": "The value for the primary (first) column, i.e. the main label for the row. Required and non-empty when using the object form."
+                    },
+                    "cells": {
+                      "type": "object",
+                      "description": "Map of the OTHER (non-primary) column names to their values. Use a string for text/single_select columns, or an array of strings for multi_select. Do not put the primary column here; use name instead.",
+                      "additionalProperties": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "columns",
+          "rows"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "delete_doc",
+      "description": "Move a document to the RemNote trash.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "A raw Rem ID returned by another RemNote MCP tool."
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "delete_rem",
+      "description": "Move an existing bullet or Rem and its descendants to the RemNote trash by exact Rem ID. Supports documents, non-document bullets, and root Rems.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "A raw Rem ID returned by another RemNote MCP tool."
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "list_commands",
+      "description": "List available omnibar commands.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    }
+  ]
+}

@@ -4,7 +4,7 @@ Plugin para **Claude Code** y **Antigravity (`agy`)** que conecta ambos agentes 
 
 ## Qué hace
 
-- **Abre RemNote solo cuando hace falta:** si RemNote está cerrado, lo lanza minimizado al invocar la skill (`rsa abrir`) o, como respaldo, ante la primera llamada real a una herramienta (`tools/call`), y espera a que el puerto responda. Al arrancar el agente no lo abre.
+- **Abre RemNote solo cuando hace falta:** el puente nunca abre RemNote por su cuenta; solo lo lanza minimizado la skill `remnote` mediante `rsa abrir` cuando pides algo de RemNote, y espera a que el puerto responda. Al arrancar el agente no lo abre.
 - **Caché sin conexión:** responde las peticiones de descubrimiento (`initialize`, `tools/list`, `resources/list`, `prompts/list`, `ping`) desde caché local sin abrir RemNote.
 - **Flujos oficiales mediante skill:** la skill `remnote` abre RemNote si hace falta y carga las guías oficiales del servidor (`load_skill`: `flashcards`, `search`, `practice_exams_or_quizzes`, entre otros).
 - **Protección contra borrados y ediciones destructivas:** pide confirmación explícita antes de `delete_doc`, `delete_rem` o `edit_rem`.
@@ -20,7 +20,7 @@ Claude Code / Antigravity (agy)
         │  MCP stdio
         ▼
 scripts/puente.mjs ──(si está cerrado: caché local para descubrimiento;
-        │             si hay tools/call: abre RemNote.exe minimizado)
+        │             si hay tools/call: indica cargar la skill remnote)
         │
         ▼  HTTP POST (Authorization: Bearer ...)
 RemNote Desktop (http://127.0.0.1:7788/mcp)
@@ -29,8 +29,8 @@ RemNote Desktop (http://127.0.0.1:7788/mcp)
 scripts/rsa.mjs (CLI: abrir, tarjetas, doctor)
 ```
 
-- **Caché sin conexión:** cuando RemNote está cerrado y el agente solicita `initialize` o `tools/list`, `scripts/puente.mjs` responde usando `~/.remnote-study-ai/cache.json` sin iniciar la aplicación. La primera vez que la caché de herramientas está vacía, abre RemNote una sola vez para obtenerla y guardarla.
-- **Apertura automática:** ante una llamada `tools/call` (o al ejecutar `rsa abrir`), si el puerto `7788` no responde, el puente lanza `RemNote.exe` minimizado mediante PowerShell para no robar el foco y sondea el puerto hasta que el servidor esté listo.
+- **Caché sin conexión:** cuando RemNote está cerrado y el agente solicita `initialize` o `tools/list`, `scripts/puente.mjs` responde usando `~/.remnote-study-ai/cache.json` (o la lista incluida en `schemas/herramientas-remnote.json` en una instalación nueva) sin iniciar la aplicación.
+- **Apertura bajo demanda:** el puente nunca abre RemNote. Solo la skill `remnote` (al ejecutar `rsa abrir`) lanza `RemNote.exe` minimizado mediante PowerShell si el puerto `7788` no responde, para no robar el foco, y sondea el puerto hasta que el servidor esté listo. Si llega una llamada `tools/call` con RemNote cerrado, el puente responde indicando cargar la skill `remnote` y ejecutar `rsa abrir`.
 - **Sin sesiones obligatorias:** el servidor MCP oficial de RemNote acepta `tools/call` sin requerir `initialize` previo, lo que permite que el CLI `rsa` se comunique directamente por HTTP.
 - **Nombres en cada agente:** en Claude Code las herramientas se exponen como `mcp__plugin_remnote-study-ai_remnote__<herramienta>`; en Antigravity (`agy`), el servidor del plugin se llama `remnote-study-ai_remnote`.
 
@@ -216,6 +216,7 @@ Errores frecuentes y cómo resolverlos:
 | `RemNote está abierto pero su servidor MCP no responde en 127.0.0.1:7788. Actívalo en RemNote: Settings → Developer → MCP server.` | RemNote está corriendo pero el servidor MCP está apagado. | En RemNote Desktop, abre `Settings → Developer → MCP server` y actívalo. |
 | `RemNote no respondió en 60 s en 127.0.0.1:7788. Ábrelo a mano o sube REMNOTE_WAIT_MS.` | RemNote tardó más del tiempo configurado en abrir o levantar el puerto. | Ábrelo manualmente o sube `REMNOTE_WAIT_MS` en `~/.remnote-study-ai/config.env`. |
 | `RemNote rechazó el token (HTTP 401). Copia el token vigente de RemNote (Settings → Developer → MCP) en REMNOTE_MCP_AUTH de ~/.remnote-study-ai/config.env, con el prefijo «Bearer ».` | El token falta, caducó o no lleva el prefijo `Bearer ` (el servidor responde `401 {"error":"Unauthorized"}`). | Copia el token actual desde `Settings → Developer → MCP` en RemNote y guárdalo como `REMNOTE_MCP_AUTH=Bearer rn_mcp_TU_TOKEN`. |
+| `RemNote está cerrado. Carga la skill remnote (ejecuta rsa abrir) y repite la llamada.` | Se llamó a una herramienta MCP con RemNote cerrado (el puente ya no abre la aplicación). | Carga la skill `remnote` o ejecuta `node scripts/rsa.mjs abrir` y repite la llamada. |
 
 ---
 

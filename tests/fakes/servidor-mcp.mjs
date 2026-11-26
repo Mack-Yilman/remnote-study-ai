@@ -46,6 +46,7 @@ export async function iniciar({ modo = 'json' } = {}) {
           protocolVersion: '2025-03-26',
           capabilities: { tools: {} },
           serverInfo: { name: 'remnote', version: '1' },
+          instructions: 'Instrucciones del servidor falso',
         };
       } else if (cuerpo.method === 'tools/list') {
         result = { tools: [{ name: 'search_docs', inputSchema: { type: 'object' } }] };

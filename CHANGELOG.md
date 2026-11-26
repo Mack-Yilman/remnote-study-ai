@@ -1,5 +1,22 @@
 # Cambios
 
+## 0.2.0 — 2026-11-26
+
+- **Error que corrige:** RemNote se abría solo al iniciar sesiones de Claude Code en cualquier proyecto. Causa: Claude
+  Code 2.1.310 sondea cada servidor MCP con el método `server/discover` al iniciar, y el puente lo trataba como una
+  llamada real y abría RemNote.
+- **Ahora el puente nunca abre RemNote.** Solo lo abre la skill `remnote`, con `rsa abrir`. Con RemNote cerrado, el
+  puente responde el descubrimiento desde la caché; una llamada a una herramienta devuelve «RemNote está cerrado. Carga
+  la skill remnote (ejecuta `rsa abrir`) y repite la llamada.»; y cualquier método desconocido devuelve el error
+  JSON-RPC `-32601`.
+- **Lista de herramientas incluida** en `schemas/herramientas-remnote.json`: el puente ya no necesita RemNote abierto
+  para listarlas, ni siquiera en una instalación nueva.
+- **Instrucciones MCP propias:** el texto que el servidor inyecta en todas las sesiones ahora dice que las herramientas
+  se usan solo si el usuario pide algo de RemNote y tras cargar la skill.
+- **La skill solo se activa si el pedido menciona RemNote** («hazme un quiz de X» ya no la activa).
+- **Incidencias:** registran el origen (`rsa abrir`, `puente`) y la llamada con RemNote cerrado (`cerrado`).
+- **Casos de eval** de activación en `evals/`.
+
 ## 0.1.2 — 2026-11-26
 
 - **`rsa instalar` con Antigravity abierto:** antes borraba la copia del plugin y fallaba con EPERM, porque el puente

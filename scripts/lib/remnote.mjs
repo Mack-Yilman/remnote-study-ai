@@ -62,16 +62,18 @@ let enCurso = null;
 let ultimoLanzamiento = 0;
 
 // Devuelve { ok: true } o { ok: false, motivo: 'no-instalado' | 'sin-mcp' | 'tiempo', mensaje }.
-export function asegurarListo(cfg, { lanzar = lanzarRemNote, sondeoMs = 500 } = {}) {
+export function asegurarListo(cfg, { lanzar = lanzarRemNote, sondeoMs = 500, origen = 'rsa' } = {}) {
   if (enCurso) return enCurso;
   enCurso = (async () => {
-    if (await puertoAbierto(cfg.host, cfg.port)) return { ok: true };
-    if (!fs.existsSync(cfg.exe)) {
+    // Un puerto abierto no basta: si RemNote se está abriendo, la app aún no responde y la llamada quedaría colgada.
+    const escucha = await puertoAbierto(cfg.host, cfg.port);
+    if (escucha && await appLista(cfg)) return { ok: true };
+    if (!escucha && !fs.existsSync(cfg.exe)) {
       const r = { ok: false, motivo: 'no-instalado', mensaje: `No se encontró RemNote en ${cfg.exe}. Corrige REMNOTE_EXE_PATH en ~/.remnote-study-ai/config.env.` };
-      anotar(r.motivo, r.mensaje);
+      anotar(r.motivo, r.mensaje, origen);
       return r;
     }
-    if (Date.now() - ultimoLanzamiento > 30000) {
+    if (!escucha && Date.now() - ultimoLanzamiento > 30000) {
       ultimoLanzamiento = Date.now();
       log(`Abriendo RemNote minimizado (${cfg.exe})…`);
       lanzar(cfg.exe);
@@ -81,11 +83,11 @@ export function asegurarListo(cfg, { lanzar = lanzarRemNote, sondeoMs = 500 } = 
       await sleep(sondeoMs);
       if (await puertoAbierto(cfg.host, cfg.port) && await appLista(cfg)) return { ok: true };
     }
-    const abierto = procesoAbierto();
-    const r = abierto
+    // sin-mcp solo si el puerto sigue cerrado: con el puerto abierto, la app solo está tardando en cargar.
+    const r = !(await puertoAbierto(cfg.host, cfg.port)) && procesoAbierto()
       ? { ok: false, motivo: 'sin-mcp', mensaje: `RemNote está abierto pero su servidor MCP no responde en ${cfg.host}:${cfg.port}. Actívalo en RemNote: Settings → Developer → MCP server.` }
       : { ok: false, motivo: 'tiempo', mensaje: `RemNote no respondió en ${cfg.esperaMs / 1000} s en ${cfg.host}:${cfg.port}. Ábrelo a mano o sube REMNOTE_WAIT_MS.` };
-    anotar(r.motivo, r.mensaje);
+    anotar(r.motivo, r.mensaje, origen);
     return r;
   })().finally(() => { enCurso = null; });
   return enCurso;
