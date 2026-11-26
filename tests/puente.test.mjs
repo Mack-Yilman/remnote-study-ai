@@ -150,7 +150,7 @@ test('2. Cerrado y con cache.json: tools/list devuelve la herramienta cacheada',
   }
 });
 
-test('3. Cerrado: tools/call devuelve error con REMNOTE_EXE_PATH y no filtra token en incidencias', { timeout: 10_000 }, async () => {
+test('3. Cerrado: tools/call devuelve error de RemNote cerrado, no abre RemNote y registra incidencia sin token', { timeout: 10_000 }, async () => {
   const home = crearHome();
   const port = await puertoLibre();
   const p = lanzarPuente(home, `http://127.0.0.1:${port}/mcp`);
@@ -158,11 +158,13 @@ test('3. Cerrado: tools/call devuelve error con REMNOTE_EXE_PATH y no filtra tok
     p.enviar({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'search_docs', arguments: {} } });
     const res = await p.esperarId(1);
     assert.ok(res.error);
-    assert.match(res.error.message, /REMNOTE_EXE_PATH/);
+    assert.match(res.error.message, /RemNote está cerrado/);
+    assert.ok(!p.getStderr().includes('Abriendo RemNote'));
 
     const incPath = path.join(home, 'incidencias.jsonl');
     assert.ok(fs.existsSync(incPath));
     const inc = fs.readFileSync(incPath, 'utf8');
+    assert.ok(inc.split(/\r?\n/).some((l) => l.includes('"tipo":"cerrado"')));
     assert.ok(!inc.includes('rn_mcp_PRUEBA123'));
   } finally {
     await p.cerrar();
@@ -256,3 +258,72 @@ for (const [modo, nombre, comprobar] of [
     }
   });
 }
+
+test('10. Cerrado: server/discover responde -32601 en menos de 1000 ms y sin abrir RemNote', { timeout: 10_000 }, async () => {
+  const home = crearHome();
+  const port = await puertoLibre();
+  const p = lanzarPuente(home, `http://127.0.0.1:${port}/mcp`);
+  try {
+    const inicio = Date.now();
+    p.enviar({ jsonrpc: '2.0', id: 7, method: 'server/discover' });
+    const res = await p.esperarId(7);
+    const duracion = Date.now() - inicio;
+
+    assert.equal(res.error?.code, -32601);
+    assert.ok(duracion < 1000, `Tardó ${duracion} ms`);
+    assert.ok(!p.getStderr().includes('Abriendo RemNote'));
+  } finally {
+    await p.cerrar();
+    fs.rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('11. Cerrado y sin cache.json: tools/list devuelve 24 herramientas incluida search_docs', { timeout: 10_000 }, async () => {
+  const home = crearHome();
+  const port = await puertoLibre();
+  const p = lanzarPuente(home, `http://127.0.0.1:${port}/mcp`);
+  try {
+    p.enviar({ jsonrpc: '2.0', id: 1, method: 'tools/list' });
+    const res = await p.esperarId(1);
+
+    assert.equal(res.result.tools.length, 24);
+    assert.ok(res.result.tools.some((t) => t.name === 'search_docs'));
+  } finally {
+    await p.cerrar();
+    fs.rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('12. Cerrado: initialize trae instructions que empieza por Herramientas de RemNote', { timeout: 10_000 }, async () => {
+  const home = crearHome();
+  const port = await puertoLibre();
+  const p = lanzarPuente(home, `http://127.0.0.1:${port}/mcp`);
+  try {
+    p.enviar({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} });
+    const res = await p.esperarId(1);
+
+    assert.equal(typeof res.result.instructions, 'string');
+    assert.ok(res.result.instructions.startsWith('Herramientas de RemNote'));
+  } finally {
+    await p.cerrar();
+    fs.rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('13. Abierto (servidor falso): initialize reemplaza instructions por el del puente', { timeout: 10_000 }, async () => {
+  const home = crearHome();
+  const srv = await iniciar({ modo: 'json' });
+  const p = lanzarPuente(home, srv.url);
+  try {
+    p.enviar({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} });
+    const res = await p.esperarId(1);
+
+    assert.equal(typeof res.result.instructions, 'string');
+    assert.ok(res.result.instructions.startsWith('Herramientas de RemNote'));
+    assert.notEqual(res.result.instructions, 'Instrucciones del servidor falso');
+  } finally {
+    await p.cerrar();
+    await srv.cerrar();
+    fs.rmSync(home, { recursive: true, force: true });
+  }
+});
