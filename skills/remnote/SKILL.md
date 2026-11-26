@@ -1,6 +1,6 @@
 ---
 name: remnote
-description: Trabaja con la base de conocimiento de RemNote Desktop a través de su servidor MCP oficial y abre RemNote si está cerrada. Úsala cuando el usuario diga «RemNote», «busca en RemNote», «qué tengo en RemNote sobre…», «lee mi documento de RemNote», «crea flashcards o tarjetas de…», «¿ya tengo tarjetas de X?», «hazme un quiz o examen de…», «agrega esto a RemNote», «mi daily de RemNote», «pasa mis errores a RemNote», o cuando otro plugin o skill quiera convertir errores de estudio en tarjetas.
+description: Trabaja con la base de RemNote Desktop por su servidor MCP oficial y abre RemNote si está cerrada. Úsala solo si el pedido menciona RemNote: «busca en RemNote», «qué tengo en RemNote sobre…», «crea tarjetas en RemNote de…», «¿ya tengo tarjetas de X en RemNote?», «quiz con mis notas de RemNote», «agrega esto a RemNote», «mi daily de RemNote», «pasa mis errores a RemNote», o si otro plugin pide pasar errores a RemNote. No la uses para tarjetas o quizzes que no mencionan RemNote.
 ---
 
 # RemNote
@@ -21,6 +21,8 @@ node "<raíz>/scripts/rsa.mjs" abrir
 - Si imprime `RemNote está listo.`, sigue.
 - Si imprime otra cosa, dile al usuario ese mensaje tal cual (dice cómo arreglarlo) y no sigas.
 - Si algo falla dos veces, ejecuta `rsa doctor` y muéstrale lo que salga con ✘.
+- Solo `rsa abrir` abre RemNote: las herramientas no lo hacen. Si una responde «RemNote está cerrado», ejecuta
+  `rsa abrir` y repite la llamada.
 
 ## 2. Cargar el flujo oficial
 

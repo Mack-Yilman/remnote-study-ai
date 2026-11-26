@@ -62,13 +62,13 @@ let enCurso = null;
 let ultimoLanzamiento = 0;
 
 // Devuelve { ok: true } o { ok: false, motivo: 'no-instalado' | 'sin-mcp' | 'tiempo', mensaje }.
-export function asegurarListo(cfg, { lanzar = lanzarRemNote, sondeoMs = 500 } = {}) {
+export function asegurarListo(cfg, { lanzar = lanzarRemNote, sondeoMs = 500, origen = 'rsa' } = {}) {
   if (enCurso) return enCurso;
   enCurso = (async () => {
     if (await puertoAbierto(cfg.host, cfg.port)) return { ok: true };
     if (!fs.existsSync(cfg.exe)) {
       const r = { ok: false, motivo: 'no-instalado', mensaje: `No se encontró RemNote en ${cfg.exe}. Corrige REMNOTE_EXE_PATH en ~/.remnote-study-ai/config.env.` };
-      anotar(r.motivo, r.mensaje);
+      anotar(r.motivo, r.mensaje, origen);
       return r;
     }
     if (Date.now() - ultimoLanzamiento > 30000) {
@@ -85,7 +85,7 @@ export function asegurarListo(cfg, { lanzar = lanzarRemNote, sondeoMs = 500 } = 
     const r = abierto
       ? { ok: false, motivo: 'sin-mcp', mensaje: `RemNote está abierto pero su servidor MCP no responde en ${cfg.host}:${cfg.port}. Actívalo en RemNote: Settings → Developer → MCP server.` }
       : { ok: false, motivo: 'tiempo', mensaje: `RemNote no respondió en ${cfg.esperaMs / 1000} s en ${cfg.host}:${cfg.port}. Ábrelo a mano o sube REMNOTE_WAIT_MS.` };
-    anotar(r.motivo, r.mensaje);
+    anotar(r.motivo, r.mensaje, origen);
     return r;
   })().finally(() => { enCurso = null; });
   return enCurso;
