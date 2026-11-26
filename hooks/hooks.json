@@ -1,0 +1,12 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "mcp__.*remnote.*__(delete_doc|delete_rem|edit_rem)",
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/rsa.mjs\" guardia", "timeout": 10 }
+        ]
+      }
+    ]
+  }
+}

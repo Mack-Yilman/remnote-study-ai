@@ -1,0 +1,8 @@
+{
+  "name": "remnote-study-ai",
+  "description": "Marketplace del plugin remnote-study-ai.",
+  "owner": { "name": "Mack Chirinos" },
+  "plugins": [
+    { "name": "remnote-study-ai", "source": "./", "description": "Conecta Claude Code y Antigravity con RemNote Desktop: abre RemNote solo cuando hace falta, usa su servidor MCP oficial con caché sin conexión, protege los borrados y convierte los errores de estudio de cualquier plugin en tarjetas sin duplicarlas." }
+  ]
+}
