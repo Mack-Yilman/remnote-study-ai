@@ -28,13 +28,13 @@ export async function doctor() {
     }
   } else {
     const proc = procesoAbierto();
-    add(null, 'Servidor MCP de RemNote', proc ? 'RemNote está abierto pero el puerto no responde' : 'RemNote cerrado (se abre solo al usarlo)',
+    add(null, 'Servidor MCP de RemNote', proc ? 'RemNote está abierto pero el puerto no responde' : 'RemNote cerrado (lo abre la skill con rsa abrir)',
       proc ? 'Activa el servidor MCP en RemNote: Settings → Developer' : '');
   }
 
   let herramientas = 0;
   try { herramientas = JSON.parse(fs.readFileSync(archivo('cache.json'), 'utf8')).toolsListResult?.tools?.length || 0; } catch { /* sin caché */ }
-  add(herramientas > 0 || null, 'Caché de herramientas', herramientas ? `${herramientas} herramientas` : 'vacía: se llena la primera vez que RemNote esté abierto');
+  add(true, 'Caché de herramientas', herramientas ? `${herramientas} herramientas` : 'vacía: se usa la lista incluida en el plugin');
 
   if (cmd('claude', ['--version']).ok) {
     add(cmd('claude', ['plugin', 'list']).out.includes(`${NOMBRE}@${NOMBRE}`), 'Plugin en Claude Code', `${NOMBRE}@${NOMBRE}`, 'node scripts/rsa.mjs instalar --aplicar');
