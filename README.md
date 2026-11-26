@@ -32,7 +32,7 @@ scripts/rsa.mjs (CLI: abrir, tarjetas, doctor)
 - **Caché sin conexión:** cuando RemNote está cerrado y el agente solicita `initialize` o `tools/list`, `scripts/puente.mjs` responde usando `~/.remnote-study-ai/cache.json` sin iniciar la aplicación. La primera vez que la caché de herramientas está vacía, abre RemNote una sola vez para obtenerla y guardarla.
 - **Apertura automática:** ante una llamada `tools/call` (o al ejecutar `rsa abrir`), si el puerto `7788` no responde, el puente lanza `RemNote.exe` minimizado mediante PowerShell para no robar el foco y sondea el puerto hasta que el servidor esté listo.
 - **Sin sesiones obligatorias:** el servidor MCP oficial de RemNote acepta `tools/call` sin requerir `initialize` previo, lo que permite que el CLI `rsa` se comunique directamente por HTTP.
-- **Nombres en cada agente:** en Claude Code las herramientas se exponen como `mcp__plugin_remnote-study-ai_remnote__<herramienta>`; en Antigravity (`agy`), el servidor se llama `remnote`.
+- **Nombres en cada agente:** en Claude Code las herramientas se exponen como `mcp__plugin_remnote-study-ai_remnote__<herramienta>`; en Antigravity (`agy`), el servidor del plugin se llama `remnote-study-ai_remnote`.
 
 ---
 
@@ -224,6 +224,7 @@ Errores frecuentes y cómo resolverlos:
 - **Sin estadísticas de repaso:** el servidor MCP oficial de RemNote no expone historial de aciertos, intervalos ni próxima fecha de repaso.
 - **Solo RemNote Desktop local:** requiere la aplicación de escritorio ejecutándose en la misma máquina (`127.0.0.1:7788`); no funciona contra RemNote Web.
 - **Probado en Windows:** la apertura minimizada y la detección de procesos están pensadas para Windows (`powershell.exe` y `tasklist`).
+- **Antigravity en modo headless (`agy -p`):** sin una regla, las herramientas MCP se deniegan. Agrega a `permissions.allow` de `~/.gemini/antigravity-cli/settings.json` las de solo lectura que quieras usar, por ejemplo `mcp(remnote-study-ai_remnote/search_docs)` y `mcp(remnote-study-ai_remnote/load_skill)`, y la regla para `rsa abrir`. En la app y el IDE de Antigravity, el agente las pide al usarlas.
 
 ---
 

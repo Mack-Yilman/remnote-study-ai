@@ -24,8 +24,8 @@ node "<raíz>/scripts/rsa.mjs" abrir
 
 ## 2. Cargar el flujo oficial
 
-Las herramientas son las del servidor `remnote` (en Claude Code se llaman `mcp__plugin_remnote-study-ai_remnote__*` y en
-Antigravity, `remnote`). RemNote trae flujos oficiales: **llama a `load_skill` con el que corresponda antes de actuar**.
+Las herramientas son las del servidor `remnote` del plugin: en Claude Code se llaman
+`mcp__plugin_remnote-study-ai_remnote__*` y en Antigravity el servidor es `remnote-study-ai_remnote`. RemNote trae flujos oficiales: **llama a `load_skill` con el que corresponda antes de actuar**.
 
 | El usuario quiere… | `load_skill` con `names` |
 |---|---|
