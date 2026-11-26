@@ -1,0 +1,43 @@
+# Personales del proyecto
+CLAUDE.md
+CLAUDE.local.md
+AGENTS.md
+GEMINI.md
+.claude/
+.agents/
+.gemini/
+.superpowers/
+
+# Secretos
+.env
+.env.*
+*.key
+*.pem
+*.p12
+secrets/
+credenciales*
+*.token
+
+# Datos del usuario y copias de consulta de las bases
+privado/
+
+
+
+# Generados y sistema
+
+*.zip
+dist/
+node_modules/
+evals/results/
+~$*
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+*.log
+
+# Datos locales de remnote-study-ai (viven en ~/.remnote-study-ai/, por si se copian aquí)
+config.env
+cache.json
+temas.json
+incidencias.jsonl
