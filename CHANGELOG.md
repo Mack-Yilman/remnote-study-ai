@@ -1,5 +1,16 @@
 # Cambios
 
+## 0.1.1 — 2026-11-26
+
+Corrige la apertura automática de RemNote, probada con la app cerrada.
+
+- **RemNote no se abría:** con `detached` y la ruta en una variable de entorno, PowerShell terminaba bien pero RemNote
+  nunca arrancaba. Ahora se lanza sin `detached`.
+- **La primera llamada fallaba a los 60 s:** el puerto 7788 abre unos 3 s después del arranque, pero la app tarda más en
+  cargar (unos 19 s minimizada). Las peticiones que llegaban antes quedaban colgadas hasta un
+  `400 Timed out waiting for the RemNote desktop app`. Ahora `rsa abrir` y el puente esperan a que la app responda a una
+  llamada corta de solo lectura antes de enviar la petición real. Desde cero, la primera respuesta llega en unos 7 s.
+
 ## 0.1.0 — 2026-11-25
 
 Primera versión. Reemplaza al puente suelto `remnote-mcp-bridge.mjs`, que vivía en dos copias, una para Claude Code y

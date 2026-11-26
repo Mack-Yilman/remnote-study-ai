@@ -36,11 +36,26 @@ export function lanzarRemNote(exe) {
     c.on('error', (e) => anotar('lanzar', `No se pudo abrir ${exe}: ${e.message}`));
     c.unref();
   };
-  const ps = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command',
+  // Sin `detached`: con detached + variable de entorno, PowerShell sale con 0 y RemNote nunca arranca (probado el
+  // 2026-11-26). No hace falta: Start-Process deja RemNote fuera del árbol del puente y PowerShell termina al instante.
+  const ps = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
     'Start-Process -FilePath $env:RSA_REMNOTE_EXE -WindowStyle Minimized'],
-  { detached: true, stdio: 'ignore', windowsHide: true, env: { ...process.env, RSA_REMNOTE_EXE: exe } });
+  { stdio: 'ignore', windowsHide: true, env: { ...process.env, RSA_REMNOTE_EXE: exe } });
   ps.on('error', directo);
   ps.unref();
+}
+
+// El puerto abre a los ~3 s, pero la app tarda más en cargar (19 s minimizada, 4 s normal; medido el 2026-11-26). Una
+// petición que llega antes queda colgada hasta que el servidor responde 400 «Timed out waiting for the RemNote desktop
+// app» a los 60 s. Por eso se sondea con una llamada corta de solo lectura hasta que responda.
+async function appLista(cfg) {
+  try {
+    const { mensajes } = await enviar({ ...cfg, timeoutMs: 4000 },
+      JSON.stringify({ jsonrpc: '2.0', id: 'rsa-sonda', method: 'tools/call', params: { name: 'get_user_info', arguments: {} } }));
+    return mensajes.some((m) => { try { return JSON.parse(m).result !== undefined; } catch { return false; } });
+  } catch (e) {
+    return e instanceof ErrorHttp && (e.status === 401 || e.status === 403); // token malo: lo informa la llamada real
+  }
 }
 
 let enCurso = null;
@@ -64,7 +79,7 @@ export function asegurarListo(cfg, { lanzar = lanzarRemNote, sondeoMs = 500 } = 
     const limite = Date.now() + cfg.esperaMs;
     while (Date.now() < limite) {
       await sleep(sondeoMs);
-      if (await puertoAbierto(cfg.host, cfg.port)) return { ok: true };
+      if (await puertoAbierto(cfg.host, cfg.port) && await appLista(cfg)) return { ok: true };
     }
     const abierto = procesoAbierto();
     const r = abierto
