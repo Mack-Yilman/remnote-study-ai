@@ -124,6 +124,8 @@ async function procesar(linea) {
       if (e instanceof ErrorHttp && !e.reintentable) break; // 401, 400…: reintentar no lo arregla
       // Una herramienta puede escribir: solo se reintenta si la petición no llegó a RemNote.
       if (msg.method === 'tools/call' && !noEntregado(e)) break;
+      // RemNote se cerró entre la comprobación y el envío: se responde como con RemNote cerrado.
+      if (noEntregado(e) && !(await puertoAbierto(cfg.host, cfg.port))) return responderSinConexion(msg);
       log(`Intento ${intento}/5 fallido: ${e.cause?.code || e.message}`);
       if (intento < 5) await new Promise((r) => setTimeout(r, 500)); // sin relanzar RemNote: eso es de `rsa abrir`
     }
