@@ -12,7 +12,9 @@ export async function doctor() {
   const cfg = leerConfig();
 
   add(fs.existsSync(archivo('config.env')), 'Configuración', archivo('config.env'), 'node scripts/rsa.mjs instalar --aplicar');
-  add(Boolean(cfg.auth), 'Token', cfg.auth ? `${cfg.auth.slice(0, 14)}…` : 'vacío', 'Pega el token de RemNote (Settings → Developer → MCP) en REMNOTE_MCP_AUTH');
+  const conPrefijo = /^Bearer\s+\S/.test(cfg.auth);
+  add(conPrefijo, 'Token', !cfg.auth ? 'vacío' : conPrefijo ? 'configurado (Bearer …)' : 'configurado sin el prefijo «Bearer »',
+    'Pega en REMNOTE_MCP_AUTH el token de RemNote (Settings → Developer → MCP) como «Bearer <token>»');
   add(fs.existsSync(cfg.exe), 'RemNote instalado', cfg.exe, 'Corrige REMNOTE_EXE_PATH en config.env');
 
   const abierto = await puertoAbierto(cfg.host, cfg.port);

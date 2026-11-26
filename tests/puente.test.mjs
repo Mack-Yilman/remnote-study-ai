@@ -228,3 +228,31 @@ test('6. Abierto (modo 401): tools/call falla mencionando token, no reintenta y 
     fs.rmSync(home, { recursive: true, force: true });
   }
 });
+
+// Regresiones de la revisión del 2026-11-25.
+for (const [modo, nombre, comprobar] of [
+  ['500', '7. Abierto (modo 500): tools/call no se reintenta (podría duplicar una escritura)', (res, srv) => {
+    assert.ok(res.error);
+    assert.equal(srv.peticiones.length, 1);
+  }],
+  ['multilinea', '8. Abierto (JSON con sangría): la respuesta llega compactada en una línea', (res) => {
+    assert.equal(res.result.structuredContent.ok, true);
+  }],
+  ['202', '9. Abierto (202 sin cuerpo a una petición con id): el puente responde con error, no deja colgado al cliente', (res) => {
+    assert.match(res.error.message, /no devolvió respuesta/);
+  }],
+]) {
+  test(nombre, { timeout: 10_000 }, async () => {
+    const home = crearHome();
+    const srv = await iniciar({ modo });
+    const p = lanzarPuente(home, srv.url);
+    try {
+      p.enviar({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'search_docs', arguments: {} } });
+      comprobar(await p.esperarId(1), srv);
+    } finally {
+      await p.cerrar();
+      await srv.cerrar();
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
+}

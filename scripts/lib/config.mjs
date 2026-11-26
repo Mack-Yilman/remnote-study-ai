@@ -30,6 +30,8 @@ export function leerConfig() {
     auth: v('REMNOTE_MCP_AUTH', ''),
     exe: v('REMNOTE_EXE_PATH', 'C:\\Program Files\\RemNote\\RemNote.exe'),
     esperaMs: Number(v('REMNOTE_WAIT_MS', 60000)),
+    timeoutMs: Number(v('REMNOTE_TIMEOUT_MS', 300000)), // tope por petición: una lectura de PDF larga puede tardar
+
   };
 }
 

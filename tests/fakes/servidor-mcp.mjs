@@ -28,7 +28,13 @@ export async function iniciar({ modo = 'json' } = {}) {
         return;
       }
 
-      if (cuerpo?.id === undefined) {
+      if (modo === '500') {
+        res.writeHead(500, { 'Content-Type': 'text/plain' });
+        res.end('fallo interno');
+        return;
+      }
+
+      if (cuerpo?.id === undefined || modo === '202') {
         res.writeHead(202);
         res.end();
         return;
@@ -59,7 +65,8 @@ export async function iniciar({ modo = 'json' } = {}) {
       }
 
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(payload);
+      // 'multilinea': JSON con sangría, para comprobar que el puente lo compacta a una línea.
+      res.end(modo === 'multilinea' ? JSON.stringify(JSON.parse(payload), null, 2) : payload);
     });
   });
 

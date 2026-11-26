@@ -18,6 +18,7 @@ function crearFakeRemnote() {
   const docs = new Map();
   const llamadas = [];
   let seq = 0;
+  let falloPasajero = false;
 
   async function llamar(nombre, args) {
     llamadas.push({ nombre, args });
@@ -35,8 +36,10 @@ function crearFakeRemnote() {
     if (nombre === 'read_docs') {
       const documents = args.ids.map((id) => {
         const doc = docs.get(id);
-        if (!doc) throw new Error(`Documento no encontrado: ${id}`);
-        return { id: doc.id, markdown: doc.markdown };
+        // Formato real de RemNote (2026-11-25): document_id + content, y «Documents not found.» si no existe.
+        if (!doc) throw new Error('read_docs: {"ok": false, "error": "Documents not found."}');
+        if (falloPasajero) throw new Error('read_docs: fetch failed');
+        return { document_id: doc.id, content: doc.markdown };
       });
       return { documents };
     }
@@ -50,7 +53,7 @@ function crearFakeRemnote() {
     throw new Error(`Herramienta desconocida: ${nombre}`);
   }
 
-  return { docs, llamadas, llamar };
+  return { docs, llamadas, llamar, fallar: (v) => { falloPasajero = v; } };
 }
 
 test('1. validar rechaza contratos inválidos y acepta uno válido', { timeout: 10_000 }, () => {
@@ -177,4 +180,32 @@ test('7. procesar con contrato inválido lanza error con codigo === 2', { timeou
     () => procesar({ version: 99 }, { llamar, aplicar: false }),
     (err) => err.codigo === 2
   );
+});
+
+// Regresiones de la revisión del 2026-11-25.
+test('8. una pregunta con comillas o barras no se duplica al repetir', { timeout: 10_000 }, async () => {
+  fs.rmSync(path.join(home, 'temas.json'), { force: true });
+  const fake = crearFakeRemnote();
+  const datos = { version: 1, origen: 'okt', errores: [{ tema: 'Comillas', pregunta: '¿Qué significa "QT largo" en C:\ECG?', respuesta: 'Repolarización prolongada' }] };
+  await procesar(datos, { llamar: fake.llamar, aplicar: true });
+  const [fila] = await procesar(datos, { llamar: fake.llamar, aplicar: true });
+  assert.equal(fila.nuevas, 0);
+});
+
+test('9. una pregunta corta que aparece dentro de una respuesta no se toma por repetida', { timeout: 10_000 }, async () => {
+  fs.rmSync(path.join(home, 'temas.json'), { force: true });
+  const fake = crearFakeRemnote();
+  await procesar({ version: 1, origen: 'okt', errores: [{ tema: 'Corta', pregunta: 'Causa de FA', respuesta: 'Hipertensión' }] }, { llamar: fake.llamar, aplicar: true });
+  const [fila] = await procesar({ version: 1, origen: 'okt', errores: [{ tema: 'Corta', pregunta: 'Hipertensión', respuesta: 'PA ≥ 140/90' }] }, { llamar: fake.llamar, aplicar: false });
+  assert.equal(fila.nuevas, 1);
+});
+
+test('10. un error pasajero de read_docs se propaga y no crea un documento duplicado', { timeout: 10_000 }, async () => {
+  fs.rmSync(path.join(home, 'temas.json'), { force: true });
+  const fake = crearFakeRemnote();
+  const datos = (p) => ({ version: 1, origen: 'okt', errores: [{ tema: 'Pasajero', pregunta: p, respuesta: 'r' }] });
+  await procesar(datos('p1'), { llamar: fake.llamar, aplicar: true });
+  fake.fallar(true);
+  await assert.rejects(procesar(datos('p2'), { llamar: fake.llamar, aplicar: true }), /fetch failed/);
+  assert.equal(fake.docs.size, 1);
 });

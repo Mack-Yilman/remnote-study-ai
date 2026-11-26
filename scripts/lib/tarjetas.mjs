@@ -43,16 +43,28 @@ function guardarTemas(t) {
 const idDe = (r) => r?.doc_id || r?.id || r?.rem_id || r?.document_id
   || JSON.stringify(r ?? '').match(/"(?:doc_id|id|rem_id)"\s*:\s*"([A-Za-z0-9]{10,})"/)?.[1] || null;
 
-// Texto del documento (para no duplicar tarjetas) o null si ya no existe.
-async function textoDoc(llamar, id) {
+// Preguntas que ya tiene el documento (normalizadas), o null si ya no existe. Un error pasajero se propaga:
+// tomarlo por «no existe» crearía un documento duplicado.
+// shortcut: si RemNote trunca un documento enorme (truncated_documents), las tarjetas omitidas no se ven; basta con
+// documentos de errores de tamaño normal.
+async function preguntasDoc(llamar, id) {
+  let r;
   try {
-    const r = await llamar('read_docs', { ids: [id] });
-    const t = JSON.stringify(r);
-    return /not.?found|no encontrado|"ok"\s*:\s*false/i.test(t) && !t.includes(id) ? null : t;
-  } catch {
-    return null;
+    r = await llamar('read_docs', { ids: [id] });
+  } catch (e) {
+    if (/not found|no encontrad/i.test(e.message)) return null;
+    throw e;
   }
+  const doc = (r?.documents || []).find((d) => (d.document_id || d.id) === id);
+  if (!doc) return null;
+  // Cada tarjeta es una línea «- pregunta→respuesta» (también ↔ o ←); se guarda la línea entera normalizada.
+  return String(doc.content ?? doc.markdown ?? '').split(/\r?\n/).map((l) => normalizar(l.replace(/^\s*[-*]\s*/, '')));
 }
+
+const yaEsta = (lineas, pregunta) => {
+  const q = normalizar(limpiar(pregunta));
+  return lineas.some((l) => l === q || (l.startsWith(q) && /^\s*(→|←|↔|>>|<<|<>|::|;;)/.test(l.slice(q.length))));
+};
 
 async function buscarDoc(llamar, titulo) {
   const r = await llamar('search_docs', { queries: [titulo] });
@@ -77,14 +89,13 @@ export async function procesar(datos, { llamar, aplicar = false }) {
   for (const [clave, g] of porTema) {
     const titulo = PREFIJO + g.tema;
     let id = temas[clave]?.id || null;
-    let texto = id ? await textoDoc(llamar, id) : null;
-    if (!texto) {
+    let lineas = id ? await preguntasDoc(llamar, id) : null;
+    if (!lineas) {
       id = await buscarDoc(llamar, titulo);
-      texto = id ? await textoDoc(llamar, id) : null;
-      if (!texto) id = null;
+      lineas = id ? await preguntasDoc(llamar, id) : null;
+      if (!lineas) id = null;
     }
-    const existente = normalizar(texto || '');
-    const nuevas = g.items.filter((e) => !existente.includes(normalizar(limpiar(e.pregunta))));
+    const nuevas = g.items.filter((e) => !yaEsta(lineas || [], e.pregunta));
     const fila = { tema: g.tema, documento: titulo, id, nuevas: nuevas.length, repetidas: g.items.length - nuevas.length, accion: 'nada' };
 
     if (nuevas.length) {

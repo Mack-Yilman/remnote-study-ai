@@ -6,7 +6,7 @@
 import fs from 'node:fs';
 import readline from 'node:readline';
 import { leerConfig, archivo, dirDatos } from './lib/config.mjs';
-import { puertoAbierto, asegurarListo, enviar, ErrorHttp } from './lib/remnote.mjs';
+import { puertoAbierto, asegurarListo, enviar, ErrorHttp, noEntregado } from './lib/remnote.mjs';
 import { anotar } from './lib/incidencias.mjs';
 
 const cfg = leerConfig();
@@ -94,10 +94,16 @@ async function procesar(linea) {
         } catch { /* respuesta no JSON: no se cachea */ }
       }
       res.mensajes.forEach((m) => escribir(m));
+      // Una petición con id que recibe 202 o un cuerpo vacío dejaría al cliente esperando para siempre.
+      if (msg.id !== undefined && !res.mensajes.some((m) => { try { return JSON.parse(m).id === msg.id; } catch { return false; } })) {
+        error(msg, 'RemNote no devolvió respuesta a esta petición.');
+      }
       return;
     } catch (e) {
       ultimo = e;
       if (e instanceof ErrorHttp && !e.reintentable) break; // 401, 400…: reintentar no lo arregla
+      // Una herramienta puede escribir: solo se reintenta si la petición no llegó a RemNote.
+      if (msg.method === 'tools/call' && !noEntregado(e)) break;
       log(`Intento ${intento}/5 fallido: ${e.cause?.code || e.message}`);
       if (intento < 5) {
         await new Promise((r) => setTimeout(r, 500));

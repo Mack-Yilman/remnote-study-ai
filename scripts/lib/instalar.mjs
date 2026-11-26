@@ -111,13 +111,20 @@ function pasosAgy() {
   const pasos = [];
   const vieja = entradaViejaAgy();
   if (vieja) {
-    const bak = `${r.agyMcp}.bak-${hoy()}`;
     pasos.push({
-      desc: `Quitar la entrada remnote vieja de ${r.agyMcp} (respaldo en ${path.basename(bak)})`,
+      desc: `Quitar la entrada remnote vieja de ${r.agyMcp} (respaldo sin el token en ${path.basename(r.agyMcp)}.bak-${hoy()})`,
       hacer: () => {
-        fs.copyFileSync(r.agyMcp, bak);
-        delete vieja.config.mcpServers.remnote;
-        fs.writeFileSync(r.agyMcp, JSON.stringify(vieja.config, null, 2) + '\n');
+        // Se relee aquí (otro proceso pudo cambiarlo) y se escribe de forma atómica: temporal + rename.
+        const original = fs.readFileSync(r.agyMcp, 'utf8');
+        const actual = JSON.parse(original);
+        let bak = `${r.agyMcp}.bak-${hoy()}`;
+        for (let n = 2; fs.existsSync(bak); n++) bak = `${r.agyMcp}.bak-${hoy()}_${n}`;
+        // Solo se tapa el token de RemNote: los de otros servidores deben quedar intactos para poder restaurar.
+        fs.writeFileSync(bak, original.replace(/rn_mcp_[\w-]+/g, 'rn_mcp_***'));
+        delete actual.mcpServers.remnote;
+        const tmp = `${r.agyMcp}.tmp-${process.pid}`;
+        fs.writeFileSync(tmp, JSON.stringify(actual, null, 2) + '\n');
+        fs.renameSync(tmp, r.agyMcp);
       },
     });
   }

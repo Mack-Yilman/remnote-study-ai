@@ -24,3 +24,9 @@ otra para Antigravity.
 - **Guardia de borrado:** un hook `PreToolUse` pide confirmación antes de `delete_doc`, `delete_rem` y `edit_rem` en
   Claude Code.
 - **Registro de fallos técnicos** en `~/.remnote-study-ai/incidencias.jsonl`, sin el token.
+- **Robustez:**
+  - el puente no reintenta un `tools/call` que pudo llegar a RemNote, para no duplicar escrituras;
+  - cada petición tiene un tope de tiempo (`REMNOTE_TIMEOUT_MS`, 5 min);
+  - cada mensaje se compacta a una línea y se agrupan los eventos SSE;
+  - responde con error si una petición recibe un 202 vacío.
+- **El instalador:** escribe `mcp_config.json` de forma atómica y deja el respaldo sin el token de RemNote.

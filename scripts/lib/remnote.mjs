@@ -30,14 +30,17 @@ export function procesoAbierto() {
 }
 
 export function lanzarRemNote(exe) {
-  // Minimizada para no robar el foco; si PowerShell falla, se lanza directo.
-  try {
-    const ps = `Start-Process -FilePath '${exe.replace(/'/g, "''")}' -WindowStyle Minimized`;
-    spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command', ps],
-      { detached: true, stdio: 'ignore', windowsHide: true }).unref();
-  } catch {
-    spawn(exe, [], { detached: true, stdio: 'ignore' }).unref();
-  }
+  // Minimizada para no robar el foco. La ruta va por variable de entorno, nunca dentro del comando (sin inyección).
+  const directo = () => {
+    const c = spawn(exe, [], { detached: true, stdio: 'ignore' });
+    c.on('error', (e) => anotar('lanzar', `No se pudo abrir ${exe}: ${e.message}`));
+    c.unref();
+  };
+  const ps = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command',
+    'Start-Process -FilePath $env:RSA_REMNOTE_EXE -WindowStyle Minimized'],
+  { detached: true, stdio: 'ignore', windowsHide: true, env: { ...process.env, RSA_REMNOTE_EXE: exe } });
+  ps.on('error', directo);
+  ps.unref();
 }
 
 let enCurso = null;
@@ -84,22 +87,31 @@ export class ErrorHttp extends Error {
   }
 }
 
-// Envía un cuerpo JSON-RPC (texto) y devuelve los mensajes JSON-RPC de la respuesta, como texto.
+// ¿El fallo ocurrió antes de que la petición llegara a RemNote? Solo entonces es seguro reintentar una escritura.
+export const noEntregado = (e) => ['ECONNREFUSED', 'ENOTFOUND', 'EHOSTUNREACH'].includes(e?.cause?.code);
+
+// Cada mensaje se compacta a una línea: un salto de línea dentro de un JSON rompería el encuadre de stdio.
+const compactar = (t) => { try { return JSON.stringify(JSON.parse(t)); } catch { return t.replace(/\r?\n/g, ' ').trim(); } };
+
+// Eventos SSE: bloques separados por una línea en blanco; sus líneas «data:» se unen con salto de línea.
+const datosSse = (texto) => texto.split(/\r?\n\r?\n/)
+  .map((ev) => ev.split(/\r?\n/).filter((l) => l.startsWith('data:')).map((l) => l.slice(5).replace(/^ /, '')).join('\n'))
+  .filter((d) => d.trim());
+
+// Envía un cuerpo JSON-RPC (texto) y devuelve los mensajes JSON-RPC de la respuesta, cada uno en una línea.
 export async function enviar(cfg, cuerpo, sesion = null) {
   const headers = { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' };
   if (cfg.auth) headers.Authorization = cfg.auth;
   if (sesion) headers['mcp-session-id'] = sesion;
-  const r = await fetch(cfg.url, { method: 'POST', headers, body: cuerpo });
+  const r = await fetch(cfg.url, { method: 'POST', headers, body: cuerpo, signal: AbortSignal.timeout(cfg.timeoutMs || 300000) });
   const nuevaSesion = r.headers.get('mcp-session-id') || sesion;
   const texto = await r.text();
   if (!r.ok && r.status !== 202) throw new ErrorHttp(r.status, texto);
   let mensajes = [];
   if (texto.trim()) {
-    mensajes = (r.headers.get('content-type') || '').includes('text/event-stream')
-      ? texto.split(/\r?\n/).filter((l) => l.startsWith('data:')).map((l) => l.slice(5).trim()).filter(Boolean)
-      : [texto.trim()];
+    mensajes = (r.headers.get('content-type') || '').includes('text/event-stream') ? datosSse(texto) : [texto];
   }
-  return { sesion: nuevaSesion, mensajes };
+  return { sesion: nuevaSesion, mensajes: mensajes.map(compactar) };
 }
 
 let idCliente = 0;
@@ -108,9 +120,11 @@ let idCliente = 0;
 export async function llamarHerramienta(cfg, nombre, args = {}) {
   const listo = await asegurarListo(cfg);
   if (!listo.ok) throw new Error(listo.mensaje);
-  const cuerpo = JSON.stringify({ jsonrpc: '2.0', id: `rsa-${++idCliente}`, method: 'tools/call', params: { name: nombre, arguments: args } });
+  const id = `rsa-${++idCliente}`;
+  const cuerpo = JSON.stringify({ jsonrpc: '2.0', id, method: 'tools/call', params: { name: nombre, arguments: args } });
   const { mensajes } = await enviar(cfg, cuerpo);
-  const resp = JSON.parse(mensajes.at(-1) || '{}');
+  const resp = mensajes.map((m) => { try { return JSON.parse(m); } catch { return {}; } }).find((m) => m.id === id);
+  if (!resp) throw new Error(`${nombre}: RemNote no devolvió respuesta`);
   if (resp.error) throw new Error(`${nombre}: ${resp.error.message}`);
   const res = resp.result || {};
   const texto = (res.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('\n');
